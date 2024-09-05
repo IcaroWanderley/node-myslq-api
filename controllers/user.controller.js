@@ -96,25 +96,31 @@ function login(req, res) {
         } else {
             bcryptjs.compare(req.body.password, user.password, function (err, result) {
                 if (result) {
-                    const token = jwt.sign(
-                        {
-                            email: user.email,
-                            userId: user.id
-                        },
-                        'secret', // Use uma variável de ambiente para o segredo em produção
-                        function (err, token) {
-                            if (err) {
-                                return res.status(500).json({
-                                    message: "Token generation failed",
-                                    error: err
-                                });
-                            }
-                            res.status(200).json({
-                                message: "Authentication successful",
-                                token: token
+                    const tokenPayload = {
+                        email: user.email,
+                        userId: user.id
+                    };
+                    const jwtKey = process.env.JWT_KEY;
+
+                    if (!jwtKey) {
+                        return res.status(500).json({
+                            message: "JWT key is not set in environment variables"
+                        });
+                    }
+
+                    jwt.sign(tokenPayload, jwtKey, function (err, token) {
+                        if (err) {
+                            console.error("Token generation error:", err);
+                            return res.status(500).json({
+                                message: "Token generation failed",
+                                error: err
                             });
                         }
-                    );
+                        res.status(200).json({
+                            message: "Authentication successful",
+                            token: token
+                        });
+                    });
                 } else {
                     res.status(401).json({
                         message: "Invalid credentials!"
