@@ -69,8 +69,20 @@ function show(req, res){
 }
 
 function index(req, res){
-    models.Post.findAll().then(result => {
-        res.status(200).json(result);
+    const page = parseInt(req.query.page) || 1; // Default to page 1 if not provided
+    const limit = parseInt(req.query.limit) || 10; // Default to 10 items per page if not provided
+    const offset = (page - 1) * limit;
+
+    models.Post.findAndCountAll({
+        limit: limit,
+        offset: offset
+    }).then(result => {
+        res.status(200).json({
+            totalItems: result.count,
+            totalPages: Math.ceil(result.count / limit),
+            currentPage: page,
+            posts: result.rows
+        });
     }).catch(error => {
         res.status(500).json({
             message: "Something went wrong!",
@@ -105,15 +117,18 @@ function update(req, res){
             errors: validationResponse
         });
     }
+
     models.Category.findByPk(req.body.category_id).then(result => {
         if(result !== null){
             models.Post.update(updatedPost, {where: {id: id, userId: userId}}).then(result => {
+                console.log('Update result:', result); // Adicione este log
                 res.status(200).json({
                     message: "Post updated successfully",
                     post: updatedPost
                 });
             }).catch(error => {
-                res.status(200).json({
+                console.log('Update error:', error); // Adicione este log
+                res.status(500).json({
                     message: "Something went wrong",
                     error: error
                 });
@@ -123,13 +138,19 @@ function update(req, res){
                 message: "Invalid Category ID!"
             });
         }
+    }).catch(error => {
+        console.log('Category find error:', error); // Adicione este log
+        res.status(500).json({
+            message: "Something went wrong",
+            error: error
+        });
     });
 
 }
 
 function destroy(req, res){
     const id = req.params.id;
-    const userId = req.userData.user;
+    const userId = req.userData.userId;
 
     models.Post.destroy({where: {id: id, userId: userId}}).then(result => {
         res.status(200).json({
